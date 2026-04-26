@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ProPlan — Subscribe</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #13131a;
+      --border: #1e1e2e;
+      --accent: #7c6aff;
+      --accent-glow: rgba(124,106,255,0.25);
+      --success: #22c55e;
+      --error: #ef4444;
+      --text: #e8e8f0;
+      --muted: #6b6b80;
+      --card-bg: #0f0f18;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      overflow-x: hidden;
+    }
+
+    /* Background mesh */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 70% 20%, rgba(124,106,255,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 40% 40% at 20% 80%, rgba(99,102,241,0.08) 0%, transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    /* ── Header ── */
+    .header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+      animation: fadeUp 0.6s ease both;
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.4rem;
+      letter-spacing: -0.03em;
+      color: var(--text);
+      margin-bottom: 1.5rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .logo-dot {
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--accent);
+    }
+
+    .plan-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--accent), #9f8fff);
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.8rem;
+      border-radius: 100px;
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 300;
+    }
+
+    /* ── Tabs ── */
+    .tabs {
+      display: flex;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 1.5rem;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 0.6rem;
+      text-align: center;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.2s;
+      border: none;
+      background: none;
+    }
+
+    .tab.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2rem;
+      animation: fadeUp 0.6s 0.15s ease both;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.5;
+    }
+
+    /* ── Form ── */
+    .form-section { display: none; }
+    .form-section.active { display: block; }
+
+    .field {
+      margin-bottom: 1.2rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 0.5rem;
+    }
+
+    input {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    input::placeholder { color: var(--muted); }
+
+    /* Stripe card element */
+    .stripe-field {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .stripe-field.focused {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+
+    /* ── Price display ── */
+    .price-display {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+
+    .price-label { font-size: 0.85rem; color: var(--muted); }
+    .price-amount {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .price-amount span { font-size: 0.8rem; color: var(--muted); font-weight: 400; }
+
+    /* ── Button ── */
+    .btn {
+      width: 100%;
+      padding: 0.9rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Syne', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 20px var(--accent-glow);
+      position: relative;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 30px var(--accent-glow); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      box-shadow: none;
+      margin-top: 0.75rem;
+    }
+    .btn-secondary:hover { border-color: var(--accent); box-shadow: none; }
+
+    /* ── Messages ── */
+    .message {
+      display: none;
+      padding: 0.8rem 1rem;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      margin-top: 1rem;
+      font-weight: 500;
+    }
+
+    .message.success {
+      display: block;
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.3);
+      color: var(--success);
+    }
+
+    .message.error {
+      display: block;
+      background: rgba(239,68,68,0.1);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: var(--error);
+    }
+
+    /* ── Subscription status card ── */
+    .status-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.2rem;
+      margin-bottom: 1rem;
+    }
+
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.4rem 0;
+      font-size: 0.88rem;
+    }
+
+    .status-key { color: var(--muted); }
+    .status-val { font-weight: 500; }
+
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 100px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .badge-active { background: rgba(34,197,94,0.15); color: var(--success); }
+    .badge-canceled { background: rgba(239,68,68,0.15); color: var(--error); }
+    .badge-past_due { background: rgba(251,191,36,0.15); color: #fbbf24; }
+    .badge-incomplete { background: rgba(107,114,128,0.15); color: var(--muted); }
+
+    /* ── Divider ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 1.2rem 0;
+      color: var(--muted);
+      font-size: 0.78rem;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Loader ── */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    /* ── Secure badge ── */
+    .secure-note {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo"><div class="logo-dot"></div> ProPlan</div>
+    <div class="plan-badge">Pro Subscription</div>
+    <h1>Unlock everything.</h1>
+    <p class="subtitle">Join thousands of users on the Pro plan.</p>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('register')">Register</button>
+    <button class="tab" onclick="switchTab('login')">Login</button>
+    <button class="tab" onclick="switchTab('subscribe')" id="subscribeTab" style="display:none">Subscribe</button>
+    <button class="tab" onclick="switchTab('manage')" id="manageTab" style="display:none">Manage</button>
+  </div>
+
+  <!-- Card -->
+  <div class="card">
+
+    <!-- ── REGISTER ── -->
+    <div class="form-section active" id="section-register">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="reg-email" placeholder="you@example.com"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="reg-password" placeholder="Min 8 characters"/>
+      </div>
+      <button class="btn" onclick="register()">
+        Create Account
+      </button>
+      <div id="reg-msg" class="message"></div>
+    </div>
+
+    <!-- ── LOGIN ── -->
+    <div class="form-section" id="section-login">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="Your password"/>
+      </div>
+      <button class="btn" onclick="login()">
+        Sign In
+      </button>
+      <div id="login-msg" class="message"></div>
+    </div>
+
+    <!-- ── SUBSCRIBE ── -->
+    <div class="form-section" id="section-subscribe">
+      <div class="price-display">
+        <div>
+          <div class="price-label">Pro Plan · Monthly</div>
+          <div style="font-size:0.75rem;color:var(--muted);margin-top:2px">Cancel anytime</div>
+        </div>
+        <div class="price-amount">$9.99<span>/mo</span></div>
+      </div>
+
+      <div class="field">
+        <label>Card Details</label>
+        <div class="stripe-field" id="card-element"></div>
+      </div>
+
+      <button class="btn" id="subscribe-btn" onclick="subscribe()">
+        Start Subscription
+      </button>
+      <div id="sub-msg" class="message"></div>
+
+      <div class="secure-note">
+        🔒 Secured by Stripe · SSL Encrypted
+      </div>
+    </div>
+
+    <!-- ── MANAGE ── -->
+    <div class="form-section" id="section-manage">
+      <div id="sub-status-container">
+        <div style="color:var(--muted);font-size:0.9rem;text-align:center;padding:1rem">
+          Loading subscription...
+        </div>
+      </div>
+      <div id="manage-msg" class="message"></div>
+    </div>
+
+  </div><!-- /card -->
+
+</div><!-- /container -->
+
+<script>
+  // ── CONFIG — update these ──────────────────────────────────
+  const API_URL      = 'http://localhost:8000';
+  const STRIPE_PK    = 'pk_test_51TP2vw6H3lrCCHM8mtGLQ2lfWJNvAci3NBjpbG3hZDfdgwXrwZghmodjjtgVtp4ag1VYnENOp5TsJmztgnJTKzMV00biwIXeVl';
+  const PRICE_ID     = 'price_1TP3936H3lrCCHM8k4w2nJd2';
+  // ──────────────────────────────────────────────────────────
+
+  let token = localStorage.getItem('token') || null;
+  let stripe, cardElement;
+
+  // Init Stripe
+  function initStripe() {
+    if (stripe) return;
+    stripe = Stripe(STRIPE_PK);
+    const elements = stripe.elements({
+      appearance: {
+        theme: 'night',
+        variables: {
+          colorPrimary: '#7c6aff',
+          colorBackground: '#13131a',
+          colorText: '#e8e8f0',
+          colorDanger: '#ef4444',
+          fontFamily: 'DM Sans, sans-serif',
+          borderRadius: '8px',
+        }
+      }
+    });
+    cardElement = elements.create('card');
+    cardElement.mount('#card-element');
+    cardElement.on('focus', () => document.querySelector('.stripe-field').classList.add('focused'));
+    cardElement.on('blur',  () => document.querySelector('.stripe-field').classList.remove('focused'));
+  }
+
+  // ── Tab switching ─────────────────────────────────────────
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.form-section').forEach(s => s.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById('section-' + tab).classList.add('active');
+    if (tab === 'subscribe') initStripe();
+    if (tab === 'manage') loadSubscription();
+  }
+
+  function showLoggedInTabs() {
+    document.getElementById('subscribeTab').style.display = 'block';
+    document.getElementById('manageTab').style.display = 'block';
+  }
+
+  // ── Helpers ───────────────────────────────────────────────
+  function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'message ' + type;
+  }
+
+  function setLoading(btnId, loading, text) {
+    const btn = document.getElementById(btnId);
+    if (btn) btn.innerHTML = loading ? `<span class="spinner"></span>${text}` : text;
+    if (btn) btn.disabled = loading;
+  }
+
+  async function api(path, method = 'GET', body = null) {
+    const opts = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+      },
+      ...(body ? { body: JSON.stringify(body) } : {})
+    };
+    const res = await fetch(API_URL + path, opts);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || 'Something went wrong');
+    return data;
+  }
+
+  // ── Register ──────────────────────────────────────────────
+  async function register() {
+    const email    = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+    if (!email || !password) return showMsg('reg-msg', 'Please fill in all fields.', 'error');
+
+    setLoading(null, true);
+    document.querySelector('#section-register .btn').disabled = true;
+    document.querySelector('#section-register .btn').innerHTML = '<span class="spinner"></span>Creating account...';
+
+    try {
+      const data = await api('/auth/register', 'POST', { email, password });
+      token = data.access_token;
+      localStorage.setItem('token', token);
+      showMsg('reg-msg', '✅ Account created! Redirecting...', 'success');
+      showLoggedInTabs();
+      setTimeout(() => switchTabById('subscribe'), 1200);
+    } catch(e) {
+      showMsg('reg-msg', e.message, 'error');
+    } finally {
+      document.querySelector('#section-register .btn').disabled = false;
+      document.querySelector('#section-register .btn').innerHTML = 'Create Account';
+    }
+  }
+
+  // ── Login ─────────────────────────────────────────────────
+  async function login() {
+    const email    = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    if (!email || !password) return showMsg('login-msg', 'Please fill in all fields.', 'error');
+
+    document.querySelector('#section-login .btn').disabled = true;
+    document.querySelector('#section-login .btn').innerHTML = '<span class="spinner"></span>Signing in...';
+
+    try {
+      const data = await api('/auth/login', 'POST', { email, password });
+      token = data.access_token;
+      localStorage.setItem('token', token);
+      showMsg('login-msg', '✅ Welcome back!', 'success');
+      showLoggedInTabs();
+      setTimeout(() => switchTabById('subscribe'), 1200);
+    } catch(e) {
+      showMsg('login-msg', e.message, 'error');
+    } finally {
+      document.querySelector('#section-login .btn').disabled = false;
+      document.querySelector('#section-login .btn').innerHTML = 'Sign In';
+    }
+  }
+
+  // ── Subscribe ─────────────────────────────────────────────
+  async function subscribe() {
+    if (!token) return showMsg('sub-msg', 'Please login first.', 'error');
+
+    document.getElementById('subscribe-btn').disabled = true;
+    document.getElementById('subscribe-btn').innerHTML = '<span class="spinner"></span>Processing...';
+
+    try {
+      // Step 1: Create payment method via Stripe.js
+      const { paymentMethod, error } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: cardElement,
+      });
+
+      if (error) throw new Error(error.message);
+
+      // Step 2: Send to your backend
+      const data = await api('/payments/subscribe', 'POST', {
+        price_id: PRICE_ID,
+        payment_method_id: paymentMethod.id,
+      });
+
+      showMsg('sub-msg', '✅ Subscription activated! You\'re on Pro.', 'success');
+      setTimeout(() => switchTabById('manage'), 1500);
+
+    } catch(e) {
+      showMsg('sub-msg', e.message, 'error');
+    } finally {
+      document.getElementById('subscribe-btn').disabled = false;
+      document.getElementById('subscribe-btn').innerHTML = 'Start Subscription';
+    }
+  }
+
+  // ── Manage ────────────────────────────────────────────────
+  async function loadSubscription() {
+    if (!token) {
+      document.getElementById('sub-status-container').innerHTML =
+        '<p style="color:var(--muted);text-align:center;font-size:0.9rem">Please login to view your subscription.</p>';
+      return;
+    }
+
+    try {
+      const data = await api('/payments/subscription');
+      const endDate = data.current_period_end
+        ? new Date(data.current_period_end).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })
+        : 'N/A';
+
+      const badgeClass = 'badge-' + (data.status || 'incomplete');
+
+      document.getElementById('sub-status-container').innerHTML = `
+        <div class="status-card">
+          <div class="status-row">
+            <span class="status-key">Status</span>
+            <span class="badge ${badgeClass}">${data.status}</span>
+          </div>
+          <div class="status-row">
+            <span class="status-key">Plan</span>
+            <span class="status-val">Pro Monthly</span>
+          </div>
+          <div class="status-row">
+            <span class="status-key">Renews</span>
+            <span class="status-val">${endDate}</span>
+          </div>
+          <div class="status-row">
+            <span class="status-key">Auto-renew</span>
+            <span class="status-val">${data.cancel_at_period_end ? '❌ Off' : '✅ On'}</span>
+          </div>
+        </div>
+        ${data.cancel_at_period_end
+          ? `<button class="btn" onclick="resumeSub()">Resume Subscription</button>`
+          : `<button class="btn btn-secondary" onclick="cancelSub()">Cancel Subscription</button>`
+        }
+      `;
+    } catch(e) {
+      document.getElementById('sub-status-container').innerHTML =
+        '<p style="color:var(--muted);text-align:center;font-size:0.9rem">No active subscription found.</p>' +
+        '<button class="btn" style="margin-top:1rem" onclick="switchTabById(\'subscribe\')">Subscribe Now</button>';
+    }
+  }
+
+  async function cancelSub() {
+    if (!confirm('Cancel at end of billing period?')) return;
+    try {
+      await api('/payments/cancel', 'POST', { at_period_end: true });
+      showMsg('manage-msg', '✅ Subscription will cancel at period end.', 'success');
+      loadSubscription();
+    } catch(e) {
+      showMsg('manage-msg', e.message, 'error');
+    }
+  }
+
+  async function resumeSub() {
+    try {
+      await api('/payments/resume', 'POST');
+      showMsg('manage-msg', '✅ Subscription resumed!', 'success');
+      loadSubscription();
+    } catch(e) {
+      showMsg('manage-msg', e.message, 'error');
+    }
+  }
+
+  // ── Helper for tab switching without event ────────────────
+  function switchTabById(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.form-section').forEach(s => s.classList.remove('active'));
+    const tabs = ['register','login','subscribe','manage'];
+    const idx = tabs.indexOf(tab);
+    document.querySelectorAll('.tab')[idx].classList.add('active');
+    document.getElementById('section-' + tab).classList.add('active');
+    if (tab === 'subscribe') initStripe();
+    if (tab === 'manage') loadSubscription();
+  }
+
+  // ── Auto-login if token exists ────────────────────────────
+  if (token) {
+    showLoggedInTabs();
+    switchTabById('manage');
+  }
+</script>
+
+</body>
+</html>
